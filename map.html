@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="utf-8"/>
+  <title>Chemical Emergency Map</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+  <style>
+    #map { height: 90vh; width: 100%; }
+    .control-box {
+      padding: 10px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+      margin: 10px;
+      font-family: sans-serif;
+    }
+    input { width: 80px; }
+  </style>
+</head>
+<body>
+  <div class="control-box">
+    <label>รัศมี (เมตร): <input type="number" id="radius" value="1000"></label>
+    <button onclick="exportKML()">ดาวน์โหลด KML</button>
+    <p>คลิกบนแผนที่เพื่อปักพิกัด</p>
+  </div>
+  <div id="map"></div>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+  <script>
+    let map = L.map('map').setView([13.736717, 100.523186], 10); // Default: Bangkok
+
+    // ใช้ OpenStreetMap
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+
+    let circle = null;
+    let marker = null;
+
+    // คลิกบนแผนที่
+    map.on('click', function(e) {
+      let radius = document.getElementById('radius').value;
+
+      if (circle) map.removeLayer(circle);
+      if (marker) map.removeLayer(marker);
+
+      marker = L.marker(e.latlng).addTo(map);
+      circle = L.circle(e.latlng, { radius: radius }).addTo(map);
+
+      marker.bindPopup("พิกัด: " + e.latlng.lat.toFixed(5) + ", " + e.latlng.lng.toFixed(5) + 
+                       "<br>รัศมี: " + radius + " m").openPopup();
+    });
+
+    // Export KML
+    function exportKML() {
+      if (!circle) {
+        alert("กรุณาคลิกเลือกพิกัดก่อน");
+        return;
+      }
+
+      let lat = circle.getLatLng().lat;
+      let lng = circle.getLatLng().lng;
+      let radius = circle.getRadius();
+
+      // สร้าง KML แบบง่าย
+      let kml = `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+<Document>
+  <Placemark>
+    <name>Chemical Incident Zone</name>
+    <Point>
+      <coordinates>${lng},${lat},0</coordinates>
+    </Point>
+  </Placemark>
+  <Placemark>
+    <Style>
+      <LineStyle><color>ff0000ff</color><width>2</width></LineStyle>
+      <PolyStyle><color>33ff0000</color></PolyStyle>
+    </Style>
+    <Circle>
+      <radius>${radius}</radius>
+    </Circle>
+  </Placemark>
+</Document>
+</kml>`;
+
+      let blob = new Blob([kml], {type: "application/vnd.google-earth.kml+xml"});
+      let url = URL.createObjectURL(blob);
+      let a = document.createElement("a");
+      a.href = url;
+      a.download = "incident_zone.kml";
+      a.click();
+    }
+  </script>
+</body>
+</html>
